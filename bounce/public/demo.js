@@ -23,9 +23,42 @@
  */
 import { sanitizeSpec } from './spec.js';
 import { sanitizeIntent } from './intent.js';
+import { nextCharacter, nextIntent } from './personality.js';
 
-/** Whether the page was opened in demo mode. Read once — it cannot change. */
-export const isDemo = new URLSearchParams(location.search).get('demo') === '1';
+/**
+ * Whether the page is running on demo mode.
+ *
+ * Precedence, highest first:
+ *
+ * 1. `?demo=1` — force on. The original, explicit switch.
+ * 2. `?demo=0` — force **off**, even on Pages. This is the escape hatch: someone
+ *    pointing the deployed site at a real proxy needs to be able to say so, and
+ *    a URL flag that only turns things on cannot express that.
+ * 3. A `*.github.io` host — on by default.
+ * 4. Anywhere else — off. A local `?proxy=` still gets the real path.
+ *
+ * Rule 3 is what makes `https://mheerspink75.github.io/Bounce` work when someone
+ * pastes it, with no query string and nothing installed. Rule 4 is what stops
+ * that from leaking into development: on localhost the proxy is either running
+ * or it is not, and a silent fallback to a scripted character would make the two
+ * look identical.
+ *
+ * That distinction is the reason `demo` is exported and surfaced in the banner.
+ * Demo mode must never be something a visitor has to guess about — the moment a
+ * static page can quietly impersonate a live model, the honesty this project is
+ * built on is gone. So it announces itself, loudly and always.
+ */
+const params = new URLSearchParams(location.search);
+const flag = params.get('demo');
+const onPages = /\.github\.io$/i.test(location.hostname);
+
+export const isDemo = flag === '1' || (flag !== '0' && onPages);
+
+/** How demo mode was decided — reported in the banner so it is never a mystery. */
+export const demoReason = flag === '1' ? 'forced by ?demo=1'
+  : flag === '0' ? 'disabled by ?demo=0'
+    : onPages ? 'static hosting (github.io)'
+      : 'not requested';
 
 /** Provider id reported to the page. Deliberately not a real model name. */
 const SOURCE = 'demo';
@@ -40,36 +73,40 @@ const SIMULATED_LATENCY_MS = 220;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * Scripted characters. Radii vary deliberately: the maze is sized from the
- * character radius, so a visibly fatter character produces a visibly coarser
- * maze, which is one of the more surprising behaviours in the project and worth
- * showing without a model.
+ * Scripted characters and steering live in `personality.js` — a pure module, so
+ * the choices can be unit-tested without a DOM, a query string or a timer. This
+ * file stays the adapter: it adds latency and runs the result through the real
+ * sanitisers.
  */
-const CHARACTERS = [
-  { name: 'Cobalt', radius: 0.55, color: '#3f7fd6', mass: 1.0, restitution: 0.78, roughness: 0.4, personality: 'calm and deliberate' },
-  { name: 'Ember', radius: 0.9, color: '#e2622b', mass: 1.8, restitution: 0.6, roughness: 0.7, personality: 'warm but volatile' },
-  { name: 'Brace{y}', radius: 0.4, color: '#7fd6a0', mass: 0.6, restitution: 0.9, roughness: 0.2, personality: 'playful {not really}' },
-  { name: 'Monolith', radius: 1.8, color: '#8a8f98', mass: 3.2, restitution: 0.35, roughness: 0.85, personality: 'unhurried and immovable' },
-  { name: 'Zippy', radius: 0.25, color: '#e0c93f', mass: 0.35, restitution: 0.92, roughness: 0.15, personality: 'reckless, favours chaos over efficiency' },
-];
-
-/** Arena targets the page reports; mirrors what `world` carries on the live path. */
-const INTENT_SHAPES = [
-  'charge_target', 'seek', 'wander', 'charge_target', 'rest', 'seek', 'charge_target', 'wander',
-];
 
 let characterIndex = 0;
 let intentIndex = 0;
+/** The personality currently driving, so intents stay consistent with the body. */
+let activePersonalityId = null;
+/**
+ * Seed for the personality engine. Taken from the page's own `seed` so a shared
+ * URL reproduces the same characters *and* the same steering, not just the same
+ * maze.
+ */
+const seed = Number(new URLSearchParams(location.search).get('seed')) || 1;
 
 export async function fetchHealth() {
   await sleep(0);
-  return { ok: true, provider: SOURCE, hasKey: false, override_active: false, demo: true };
+  return {
+    ok: true,
+    provider: SOURCE,
+    hasKey: false,
+    override_active: false,
+    demo: true,
+    reason: demoReason,
+  };
 }
 
 export async function fetchCharacter() {
   await sleep(SIMULATED_LATENCY_MS * 4);
-  const raw = CHARACTERS[characterIndex % CHARACTERS.length];
+  const { personality, spec: raw } = nextCharacter({ index: characterIndex, seed });
   characterIndex += 1;
+  activePersonalityId = personality.id;
   // Sanitised exactly as a model response would be, so the bounds hold here too.
   const spec = sanitizeSpec(raw);
   return {
@@ -81,41 +118,41 @@ export async function fetchCharacter() {
     model_reasoning: null,
     reasoning_field: null,
     fallback: false,
+    personality: { id: personality.id, label: personality.label, blurb: personality.blurb },
   };
 }
 
 /**
  * `world` carries the goal, which is the only thing the server cannot know for
- * itself. The demo reads it the same way the real prompt does, and mostly heads
- * for the goal — with a deliberate minority of other intents so the character
- * reads as a decision-maker rather than a scripted animation.
+ * itself. The demo reads it the same way the real prompt does and hands it to
+ * the same personality that designed the body, so a character drives
+ * consistently with what it is.
  */
 export async function fetchIntent({ world } = {}) {
   await sleep(SIMULATED_LATENCY_MS);
+  const { personality, spec: raw } = nextIntent({
+    index: intentIndex,
+    seed,
+    world,
+    personalityId: activePersonalityId,
+  });
   intentIndex += 1;
-
-  const goal = world?.goal;
-  const wantsGoal = goal && !goal.reached && intentIndex % 4 !== 0;
-
-  const raw = wantsGoal
-    ? { action: 'charge_target', target: 'goal', intensity: 1, duration_s: 8 }
-    : {
-      action: INTENT_SHAPES[intentIndex % INTENT_SHAPES.length],
-      target: 'block_a',
-      intensity: 0.6,
-      duration_s: 3,
-    };
 
   return {
     intent: sanitizeIntent(raw),
     targets: world?.targets ?? [],
-    goal: goal ?? null,
+    goal: world?.goal ?? null,
     source: SOURCE,
     latency_ms: SIMULATED_LATENCY_MS,
     reasoning_tokens: 0,
     model_said: JSON.stringify(raw),
-    model_reasoning: null,
-    reasoning_field: null,
+    // The personality blurb stands in for chain-of-thought. It lands in the
+    // thoughts panel's scratch area, which is exactly the right place for a
+    // justification that did not come from a model's reasoning tokens — and it
+    // is visibly not a model, which is the point.
+    model_reasoning: `acting as ${personality.label}: ${personality.blurb}`,
+    reasoning_field: 'personality',
     sanitised: false,
+    personality: { id: personality.id, label: personality.label, blurb: personality.blurb },
   };
 }

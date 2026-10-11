@@ -14,6 +14,11 @@ on:
     paths:
       - 'bounce/public/**'
       - '.github/workflows/pages.yml'
+  # Redeploy on demand. Worth keeping even with the path filter above: the Pages
+  # `main` branch can also be configured manually, and a site that only builds on
+  # a matching path is a site that silently stops updating the moment someone
+  # enables Pages from the Settings tab and redeploys from a branch that did not
+  # touch bounce/public.
   workflow_dispatch:
 
 permissions:
@@ -40,9 +45,34 @@ jobs:
       - name: Verify the demo path is not broken before publishing
         working-directory: bounce
         run: |
-          node --check public/demo.js
-          node --check public/api.js
-          test -f public/index.html || { echo "no index.html"; exit 1; }
+                # Every module the page imports, not just the two entry points. A syntax
+                # error in any of them leaves a deployed site that loads a blank canvas
+                # and a console message no visitor will read — the failure mode that
+                # looks most like "the demo just doesn't work".
+                for f in public/*.js; do node --check "$f"; done
+                test -f public/index.html || { echo "no index.html"; exit 1; }
+
+                # Pages serves this site from https://<user>.github.io/Bounce/, not from
+                # the domain root. A leading-slash asset path therefore 404s, and it is
+                # the single most common way a GitHub Pages site renders blank while
+                # working perfectly on localhost — so it is checked here rather than
+                # discovered by a visitor. Localhost and CDNs are both fine; only
+                # root-relative paths are the problem.
+                if grep -nE '(src|href)="/' public/index.html; then
+                  echo "index.html has a root-relative asset path; Pages serves from /Bounce/"
+                  exit 1
+                fi
+
+                # The import map must still resolve every bare specifier the page uses.
+                # A bare specifier with no import-map entry is a bare module error at
+                # runtime, which shows a visitor a black canvas and nothing else.
+                for spec in three @dimforge/rapier3d-compat; do
+                  grep -q "\"$spec\"" public/index.html || { echo "import map missing $spec"; exit 1; }
+                done
+
+                # Personality determinism is the one invariant the whole demo rests on:
+                # a shared URL has to reproduce the same run.
+                node test/personality.test.mjs
 
       - uses: actions/configure-pages@v5
 

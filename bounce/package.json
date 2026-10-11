@@ -20,6 +20,7 @@
     "test:loop": "node scripts/loop-check.mjs 2",
     "test:demo": "node scripts/demo-mode-check.mjs",
     "test:demo-ui": "node scripts/demo-experience-check.mjs",
+    "test:demo-ui": "node scripts/demo-experience-check.mjs",
     "check:ollama": "node --env-file-if-exists=.env scripts/live-ollama-check.mjs",
     "check:links": "node scripts/check-links.mjs",
     "check:mermaid": "node scripts/check-mermaid.mjs",

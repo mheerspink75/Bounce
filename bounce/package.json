@@ -16,7 +16,10 @@
     "test:maze": "node test/maze.test.mjs && node test/navigator.test.mjs && node test/navigation.test.mjs",
     "test:server": "node --test test/server.test.js",
     "test:browser": "node test/browser-smoke.mjs && node test/control-visibility.test.mjs && node test/visual-sync.test.mjs && node test/visibility.test.mjs && node test/thoughts-panel.test.mjs && node test/ollama-modes.test.mjs && node scripts/reseed-check.mjs",
-    "test:loop": "node scripts/loop-check.mjs 2"
+    "test:loop": "node scripts/loop-check.mjs 2",
+    "test:demo": "node scripts/demo-mode-check.mjs",
+    "check:ollama": "node --env-file-if-exists=.env scripts/live-ollama-check.mjs",
+    "bench:local": "node --env-file-if-exists=.env scripts/bench-local.mjs"
   },
   "devDependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",

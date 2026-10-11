@@ -7,6 +7,12 @@
 
 const DEFAULT_BASE = 'http://127.0.0.1:8787';
 
+// Demo mode answers the same three endpoints from the page itself, so a static
+// deployment needs no proxy. Opt-in via `?demo=1` only — it never engages on its
+// own, because "the proxy is unreachable" and "the model is scripted" must not
+// look identical, and telling them apart is what the HUD's `control` line is for.
+import { isDemo, fetchHealth as demoHealth, fetchCharacter as demoCharacter, fetchIntent as demoIntent } from './demo.js';
+
 /** Read the proxy URL from the query string so it can be pointed elsewhere. */
 function proxyBase() {
   const fromQuery = new URLSearchParams(location.search).get('proxy');
@@ -47,6 +53,7 @@ async function call(path, { signal, ...init } = {}) {
 }
 
 export async function fetchHealth({ signal } = {}) {
+  if (isDemo) return demoHealth();
   const res = await call('/api/health', { signal });
   if (!res.ok) throw new Error(`health check failed: HTTP ${res.status}`);
   return res.json();
@@ -60,6 +67,7 @@ export async function fetchHealth({ signal } = {}) {
  * should surface that rather than pretending the model was used.
  */
 export async function fetchCharacter({ signal } = {}) {
+  if (isDemo) return demoCharacter();
   const res = await call('/api/character', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -93,6 +101,7 @@ export async function fetchCharacter({ signal } = {}) {
  * a model is.
  */
 export async function fetchIntent({ signal, world } = {}) {
+  if (isDemo) return demoIntent({ world });
   const res = await call('/api/intent', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

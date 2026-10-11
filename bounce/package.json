@@ -1,0 +1,26 @@
+{
+  "name": "bounce",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI-designed, AI-controlled character in the browser. Step 1: physics only.",
+  "scripts": {
+    "serve": "..\\.venv\\Scripts\\python.exe scripts/serve.py",
+    "start": "node --env-file-if-exists=.env server/index.js",
+    "test": "npm run test:headless && npm run test:server",
+    "test:headless": "node test/physics.test.mjs && node test/character.test.mjs && node test/brain.test.mjs && node test/intent-schema.test.mjs && node test/wall-containment.test.mjs && node test/anti-stall.test.mjs && node test/goal-arrival.test.mjs && node test/timestep.test.mjs && node test/maze.test.mjs && node test/navigator.test.mjs && node test/navigation.test.mjs",
+    "test:physics": "node test/physics.test.mjs",
+    "test:timestep": "node test/timestep.test.mjs",
+    "test:character": "node test/character.test.mjs",
+    "test:brain": "node test/brain.test.mjs",
+    "test:maze": "node test/maze.test.mjs && node test/navigator.test.mjs && node test/navigation.test.mjs",
+    "test:server": "node --test test/server.test.js",
+    "test:browser": "node test/browser-smoke.mjs && node test/control-visibility.test.mjs && node test/visual-sync.test.mjs && node test/visibility.test.mjs && node test/thoughts-panel.test.mjs && node test/ollama-modes.test.mjs && node scripts/reseed-check.mjs",
+    "test:loop": "node scripts/loop-check.mjs 2"
+  },
+  "devDependencies": {
+    "@dimforge/rapier3d-compat": "0.21.0",
+    "playwright": "^1.63.0",
+    "three": "^0.186.1"
+  }
+}

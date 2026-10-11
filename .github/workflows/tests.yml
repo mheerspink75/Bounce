@@ -50,13 +50,23 @@ jobs:
         run: npm test
 
   links:
-    # The README links into eight docs/ files by anchor. A renamed heading
-    # silently breaks them on GitHub, and nothing else in CI would notice.
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Verify every relative link and anchor resolves
-        run: node bounce/scripts/check-links.mjs
+      # The README links into nine docs/ files by anchor, and five of those pages
+      # carry Mermaid diagrams. A renamed heading breaks the links silently; a
+      # diagram that does not parse renders as an error box on GitHub. Nothing
+      # else in CI would notice either, so both are checked here.
+      runs-on: ubuntu-latest
+      defaults:
+        run:
+          working-directory: bounce
+      steps:
+        - uses: actions/checkout@v4
+        - uses: actions/setup-node@v4
+          with:
+            node-version: '22'
+            cache: npm
+            cache-dependency-path: bounce/package-lock.json
+        - run: npm install --no-audit --no-fund
+        - name: Verify every relative link and anchor resolves
+          run: node scripts/check-links.mjs
+        - name: Verify every Mermaid diagram parses
+          run: node scripts/check-mermaid.mjs

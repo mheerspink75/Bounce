@@ -22,3 +22,10 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Logs
+logs/
+*.log
+
+# Copilot Session
+session/

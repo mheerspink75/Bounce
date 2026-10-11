@@ -20,8 +20,15 @@ const page = await browser.newPage({ viewport: { width: 1100, height: 760 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 
+// `Boolean(window.bounce)` first, deliberately: with optional chaining alone a
+// page that failed to boot yields `undefined !== '—'`, the wait returns at once,
+// and the run reports a model that never answered as one that did.
 await page.goto(`http://localhost:8080/?proxy=${encodeURIComponent(proxyUrl)}`, { waitUntil: 'load' });
-await page.waitForFunction(() => window.bounce?.status?.provider !== '—', null, { timeout: 30_000 });
+await page.waitForFunction(
+  () => Boolean(window.bounce) && window.bounce.status.provider !== '—',
+  null,
+  { timeout: 30_000 },
+);
 console.log('page reports provider:', await page.evaluate(() => window.bounce.status.provider));
 
 console.log('\nrequesting a live character from ollama (thinking ON)...');

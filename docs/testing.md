@@ -42,7 +42,32 @@ npm run test:timestep  # 16 of those: the simulation keeps real time at low fps
 npm run test:browser   # 142 browser + WebGL assertions (needs both servers up)
 npm run test:loop      # drives 2 full mazes unaided in the real page (needs both)
 npm run test:demo      # static-only: solves a maze with no backend and no model
+npm run check:links    # every relative link + anchor in README.md and docs/ resolves
+npm run check:mermaid  # all five Mermaid diagrams parse, via Mermaid's own parser
 ```
+
+### Documentation checks
+
+Two failures here are invisible to every other suite, because nothing else
+reads the prose: a renamed heading silently breaks the README's anchor links
+on GitHub, and a diagram that does not parse renders as an error box rather
+than a picture. Both run in CI, in the `links` job.
+
+`check:links` reproduces GitHub's slugger exactly, including its refusal to
+collapse runs of spaces — an em dash between two words yields a **double**
+hyphen in the anchor, which is easy to "fix" into a broken link. A file the
+checker cannot read counts as a failure, not a skip; skipping it would drop
+every link it held out of the report and still exit 0.
+
+`check:mermaid` hands each diagram to Mermaid in a `jsdom` window instead of
+regex-matching it, so it catches real syntax errors. Both scripts anchor their
+paths on `import.meta.url`, so they behave identically from the repo root and
+from `bounce/`.
+
+Both were validated with negative controls: a broken path, a bad anchor and a
+missing file each produce a non-zero exit, and an invalid diagram is reported
+by block and line. A check that cannot fail is not a check — see
+[tests that lie](gotchas.md#tests-that-lie).
 
 ---
 

@@ -1,8 +1,12 @@
 // Verify every relative link and anchor in README.md and docs/*.md resolves.
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = process.cwd();
+// scripts/ -> bounce/ -> repo root. Anchored on import.meta.url rather than
+// process.cwd() so CI can invoke this from the repo root and get the same
+// answer as running it from bounce/.
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const files = ['README.md', ...['architecture', 'local-models', 'testing',
   'debugging-lessons', 'performance-analysis', 'security-notes', 'gotchas',
   'deployment', 'roadmap']
@@ -15,9 +19,13 @@ const slug = h => h.toLowerCase()
   .replace(/[^\w\s-]/g, '').trim().replace(/\s/g, '-');
 
 const headings = new Map();
+let bad = 0;
+
+// A file this checker cannot read is a failure, not a skip. Skipping it would
+// silently drop every link it contained from the report and still exit 0.
 for (const f of files) {
   const abs = join(root, f);
-  if (!existsSync(abs)) { console.log(`MISSING FILE ${f}`); continue; }
+  if (!existsSync(abs)) { console.log(`MISSING FILE ${f}`); bad++; continue; }
   const set = new Set();
   let inFence = false;
   for (const line of readFileSync(abs, 'utf8').split(/\r?\n/)) {
@@ -29,9 +37,7 @@ for (const f of files) {
   headings.set(resolve(abs).replace(/\\/g, '/'), set);
 }
 
-let bad = 0;
 for (const f of files) {
-  if (!existsSync(join(root, f))) continue;
   const text = readFileSync(join(root, f), 'utf8');
   const re = /\[[^\]]*\]\(([^)\s]+)\)/g;
   let m;

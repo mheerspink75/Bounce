@@ -1,0 +1,24 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Secrets — the API key for the LLM proxy lives here. Never commit.
+.env
+.env.*
+!.env.example
+
+# Python virtualenv (local, recreated with `py -3 -m venv .venv`)
+.venv/
+
+# Build output
+dist/
+build/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

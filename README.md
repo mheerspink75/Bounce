@@ -136,6 +136,12 @@ unreachable, because "the proxy is down" and "the model is scripted" have to sta
 distinguishable — that distinction is the entire purpose of the HUD's `control`
 line.
 
+**Deploying this yourself:** GitHub Pages needs no backend and no configuration —
+the page is already the exact tree to publish. A **real-model** deployment needs
+a host that runs Node and holds a key; free static hosting cannot do that without
+putting the key in browser JavaScript. Both, with the trade-offs:
+**[deployment](docs/deployment.md)**.
+
 ### With a real local model
 
 ```bash
@@ -448,6 +454,7 @@ Smaller known issues:
 | **[Performance](docs/performance-analysis.md)** | where the time actually goes, measured |
 | **[Security](docs/security-notes.md)** | the key-holding proxy, origin guard, redaction, publishing checklist |
 | **[Gotchas](docs/gotchas.md)** | every hard-won lesson, grouped |
+| **[Deployment](docs/deployment.md)** | GitHub Pages, Vercel, Netlify — and why free hosting cannot hold a key |
 | **[Roadmap](docs/roadmap.md)** | what is next, in priority order |
 
 ---

@@ -4,7 +4,8 @@ import { join, dirname, resolve } from 'node:path';
 
 const root = process.cwd();
 const files = ['README.md', ...['architecture', 'local-models', 'testing',
-  'debugging-lessons', 'performance-analysis', 'security-notes', 'gotchas', 'roadmap']
+  'debugging-lessons', 'performance-analysis', 'security-notes', 'gotchas',
+  'deployment', 'roadmap']
   .map(n => `docs/${n}.md`)];
 
 // GitHub's slugger: strip punctuation, lowercase, then turn each space into a

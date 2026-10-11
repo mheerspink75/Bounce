@@ -1,0 +1,61 @@
+name: pages
+
+# Publishes bounce/public as a static site. The point is the zero-backend demo:
+# `?demo=1` answers all three endpoints in-page, so a visitor needs no proxy, no
+# key and no model -- and navigation is deterministic, so a maze still gets
+# solved. See docs/deployment.md.
+#
+# Demo mode is opt-in and never engages automatically, so a visitor must add
+# ?demo=1 to the URL or the page will (correctly) report the proxy unreachable.
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'bounce/public/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deployment at a time; a newer commit cancels an in-flight one rather
+# than racing it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # public/ is the static server's document root, so it is already the exact
+      # tree to publish. No bundler step: the import map in index.html resolves
+      # the bare specifiers, and Rapier's -compat build inlines its WASM as
+      # base64 so there is no second request to wire up.
+      - name: Verify the demo path is not broken before publishing
+        working-directory: bounce
+        run: |
+          node --check public/demo.js
+          node --check public/api.js
+          test -f public/index.html || { echo "no index.html"; exit 1; }
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: bounce/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

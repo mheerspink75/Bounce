@@ -18,6 +18,17 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
 const BASE = process.env.DEMO_BASE ?? 'http://localhost:8080';
+// Defaults to the explicit flag. Point it at Pages with DEMO_QUERY=none to load
+// the bare public URL, exactly as a stranger would paste it. The sentinel exists
+// because an empty environment variable cannot express "no query string": Windows
+// PowerShell deletes a variable assigned '', so `?? ''` never sees an empty value
+// and quietly falls back to the flag. That is exactly the kind of default that
+// makes a test pass while testing nothing.
+const QUERY = (() => {
+  const q = process.env.DEMO_QUERY;
+  if (q === undefined || q === '') return '?demo=1';
+  return q === 'none' ? '' : q;
+})();
 
 let failures = 0;
 function check(name, cond, detail = '') {
@@ -33,7 +44,7 @@ page.on('pageerror', (e) => errors.push(e.message));
 
 // --- the banner is shown, and says what it is ---------------------------
 {
-  await page.goto(`${BASE}/?demo=1`, { waitUntil: 'load' });
+  await page.goto(`${BASE}/${QUERY}`, { waitUntil: 'load' });
   await page.waitForFunction(
     () => Boolean(window.bounce) && window.bounce.status.provider !== '—',
     null, { timeout: 30_000 },
@@ -55,7 +66,15 @@ page.on('pageerror', (e) => errors.push(e.message));
   }
   check('banner explains how demo mode engaged', /forced by|github\.io|not requested/i.test(banner.text),
     await page.evaluate(() => document.getElementById('demoReason')?.textContent ?? ''));
-}
+
+    // The reason line is the difference between "this is a mock" and "this is a
+    // model I cannot see". On Pages it must name static hosting, not the flag.
+    if (BASE.includes('github.io')) {
+      check('Pages auto-engages demo mode with no query string',
+        /github\.io/i.test(banner.text),
+        `opened as ${BASE}/ with no demo flag`);
+    }
+  }
 
 // --- the dashboard shows real, non-placeholder values --------------------
 {

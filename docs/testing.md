@@ -28,8 +28,8 @@ looks wrong.
 key. That matters because it is what runs in CI.
 
 **`npm run test:browser` needs both servers up** (`:8080` static, `:8787`
-proxy). It skips cleanly if Playwright is absent — which is a trap: see
-[A test that skips with exit 0 is not a test that passed](#a-test-that-skips-with-exit-0-is-not-a-test-that-passed).
+proxy). It skips cleanly if Playwright is absent — which is a trap, and the
+reason [tests that lie](gotchas.md#tests-that-lie) is its own section.
 
 ---
 

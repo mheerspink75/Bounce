@@ -1,0 +1,62 @@
+name: tests
+
+# `npm test` is the headless + server suite: Node only, no browser, no network,
+# no API key. That is the point of running it here -- the browser and live-model
+# suites need hardware and a key, so they stay local. See docs/testing.md.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bounce
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22', '24']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: bounce/package-lock.json
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Syntax check every source file
+        run: |
+          find public server scripts test -name '*.js' -o -name '*.mjs' \
+            | xargs -n1 node --check
+
+      - name: Headless + server tests
+        run: npm test
+
+  links:
+    # The README links into eight docs/ files by anchor. A renamed heading
+    # silently breaks them on GitHub, and nothing else in CI would notice.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify every relative link and anchor resolves
+        run: node bounce/scripts/check-links.mjs

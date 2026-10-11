@@ -10,7 +10,7 @@ The proxy is the only place a key exists. The browser only ever calls
 - [Rate limiting](#rate-limiting)
 - [Redaction](#redaction)
 - [Untrusted model output](#untrusted-model-output)
-- [Environment hygiene](#environment-hygency)
+- [Environment hygiene](#environment-hygiene)
 - [Publishing checklist](#publishing-checklist)
 
 ---

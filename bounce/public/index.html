@@ -90,10 +90,109 @@
     background: #1a0f0f; border: 1px solid #5a2a24; border-radius: 8px;
     padding: 16px; overflow: auto; white-space: pre-wrap;
   }
+
+  /* --- demo banner ------------------------------------------------------
+     Hidden until main.js proves demo mode is actually on, then shown for good.
+     A visitor on the static demo must never be left guessing whether a real
+     model is answering, so this is deliberately loud and deliberately permanent.
+     It sits under the HUD rather than over it, so neither hides the other. */
+  #demoBanner {
+    position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+    display: none; z-index: 3; max-width: min(560px, calc(100vw - 40px));
+    font: 12px/1.55 ui-monospace, Menlo, Consolas, monospace;
+    color: #d8e2ee; background: linear-gradient(180deg, rgba(24,32,44,.96), rgba(16,21,29,.96));
+    border: 1px solid #2f4a63; border-radius: 8px; padding: 10px 14px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.45);
+  }
+  body.demo-on #demoBanner { display: block; }
+  #demoBanner .d-title { color: #7fd6a0; font-weight: 600; letter-spacing: .02em; }
+  #demoBanner .d-title::before { content: "🚀 "; }
+  #demoBanner .d-sub { color: #8a97a6; margin: 5px 0 7px; }
+  #demoBanner .d-list {
+    margin: 0; padding: 0; list-style: none; color: #93a1b1;
+    display: flex; flex-wrap: wrap; gap: 4px 14px;
+  }
+  #demoBanner .d-list li::before { content: "· "; color: #4a6a86; }
+  #demoBanner .d-foot {
+    margin-top: 7px; padding-top: 7px; border-top: 1px solid #223040;
+    color: #6f7d8c; font-size: 11px;
+  }
+  #demoBanner .d-foot a { color: #7fb0e0; }
+  #demoBanner .d-why { color: #55626f; font-size: 10px; margin-top: 4px; }
+  @media (max-width: 1100px) {
+    body.demo-on #demoBanner { left: 10px; transform: none; max-width: calc(100vw - 380px); }
+  }
+  @media (max-width: 760px) {
+    body.demo-on #demoBanner { max-width: calc(100vw - 20px); }
+    body.demo-on #thoughtsToggle { top: auto; bottom: 10px; }
+  }
+
+  /* --- metrics dashboard -----------------------------------------------
+     Fixed-width, updated in place every frame. Kept separate from the debug
+     HUD on purpose: the HUD is a diagnostic instrument full of substep counts
+     and reasons strings, whereas this is the demo's sales pitch and should stay
+     legible at a glance. */
+  #metrics {
+    position: fixed; top: 10px; right: 10px; z-index: 1; width: 210px;
+    font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace;
+    color: #9fb0c2; background: rgba(13,15,18,.78);
+    border: 1px solid #1e252e; border-radius: 6px; padding: 8px 10px;
+  }
+  #metrics h2 {
+    margin: 0 0 6px; font: 10px/1.4 inherit; text-transform: uppercase;
+    letter-spacing: .08em; color: #5d6a7a;
+  }
+  #metrics .m-row { display: flex; justify-content: space-between; gap: 10px; }
+  #metrics .m-row + .m-row { margin-top: 2px; }
+  #metrics .m-k { color: #5d6a7a; }
+  #metrics .m-v { color: #c8d0da; text-align: right; }
+  #metrics .m-v.is-live { color: #7ef2a0; }
+  #metrics .m-v.is-warn { color: #e0c93f; }
+  #metrics hr {
+    border: 0; border-top: 1px solid #1a2028; margin: 6px 0;
+  }
+  body.thoughts-open #metrics { top: auto; bottom: 10px; }
+  @media (max-width: 900px) { #metrics { display: none; } }
 </style>
 </head>
 <body>
   <div id="hud">initialising…</div>
+
+  <div id="demoBanner" role="status">
+    <div class="d-title">Live Demo Mode</div>
+    <div class="d-sub">
+      This demo runs entirely in your browser using the built-in
+      <b>mock</b> AI provider &mdash; no server, no API key, no installation.
+    </div>
+    <ul class="d-list">
+      <li>Ollama</li>
+      <li>NVIDIA NIM</li>
+      <li>OpenRouter</li>
+      <li>local models</li>
+      <li>schema-constrained decoding</li>
+    </ul>
+    <div class="d-foot">
+      The full version connects a real model over those providers and steers
+      with genuine LLM intents.
+      <a href="https://github.com/mheerspink75/Bounce" target="_blank" rel="noopener">View the source →</a>
+    </div>
+    <div class="d-why" id="demoReason"></div>
+  </div>
+
+  <div id="metrics">
+    <h2>metrics</h2>
+    <div class="m-row"><span class="m-k">maze</span><span class="m-v" id="m-maze">—</span></div>
+    <div class="m-row"><span class="m-k">character</span><span class="m-v" id="m-char">—</span></div>
+    <div class="m-row"><span class="m-k">personality</span><span class="m-v" id="m-personality">—</span></div>
+    <hr>
+    <div class="m-row"><span class="m-k">rewards</span><span class="m-v" id="m-rewards">0</span></div>
+    <div class="m-row"><span class="m-k">avg completion</span><span class="m-v" id="m-avg">—</span></div>
+    <hr>
+    <div class="m-row"><span class="m-k">intent</span><span class="m-v" id="m-intent">—</span></div>
+    <div class="m-row"><span class="m-k">sim time</span><span class="m-v" id="m-simtime">0.0s</span></div>
+    <div class="m-row"><span class="m-k">fps</span><span class="m-v" id="m-fps">—</span></div>
+  </div>
+
   <div id="thoughtsToggle" role="button" tabindex="0" title="Show what the model is emitting">thoughts</div>
   <div id="thoughts" hidden></div>
   <div id="err"></div>

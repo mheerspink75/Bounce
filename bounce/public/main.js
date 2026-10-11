@@ -13,6 +13,7 @@ import { createWorld, FIXED_TIMESTEP } from './physics.js';
 import { createCharacterMesh, createLocatorMesh, disposeCharacterMesh, PRESET_SPECS } from './character.js';
 import { createBrain } from './brain.js';
 import { fetchHealth, fetchCharacter, fetchIntent } from './api.js';
+import { isDemo, demoReason } from './demo.js';
 
 /** Shadows cost fill rate. On a software renderer this is the first thing to cut. */
 const SHADOWS = true;
@@ -27,6 +28,22 @@ const SHADOWS = true;
 const OVERRIDE_POLL_MS = 200;
 
 const hud = document.getElementById('hud');
+
+/**
+ * Write one dashboard value, skipping the DOM when nothing changed.
+ *
+ * `textContent` on a span is cheap, but assigning it 60 times a second for eight
+ * spans is eight layout-invalidating writes per frame for text that usually did
+ * not move. The last-value cache makes the common frame a no-op, and it is why
+ * the dashboard can be updated every frame without costing anything measurable.
+ */
+const metricCache = new Map();
+function setMetric(id, value) {
+  if (metricCache.get(id) === value) return;
+  metricCache.set(id, value);
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
 
 // Surface any module-level or async failure instead of dying silently in console.
 function fatal(err) {
@@ -400,7 +417,31 @@ async function main() {
 
   // --- step 3: ask the model for a character -----------------------------
   // The key is on the server. This only ever receives a sanitised spec.
-  const status = { state: 'idle', provider: '—', source: '—', providerOk: null, providerError: null };
+  const status = {
+    state: 'idle',
+    provider: '—',
+    source: '—',
+    providerOk: null,
+    providerError: null,
+    personality: null,
+  };
+
+  // Announce demo mode before anything else can make it look like a live model.
+  //
+  // This is the one place that is allowed to be unconditionally loud. The rest
+  // of this file works hard to keep "the proxy is down" and "the model answered"
+  // distinguishable; a static demo page that quietly substituted a scripted
+  // character would undo all of it. So the banner is shown as soon as we know,
+  // it states plainly that the provider is a mock, and it records *why* demo mode
+  // engaged, which is the question a sceptical visitor actually has.
+  if (isDemo) {
+    document.body.classList.add('demo-on');
+    const why = document.getElementById('demoReason');
+    if (why) {
+      why.textContent = `Mock provider — ${demoReason}. `
+        + 'Every intent below still passes through the production schema validators.';
+    }
+  }
 
   async function askForCharacter() {
     if (status.state === 'loading') return;
@@ -411,6 +452,9 @@ async function main() {
       applySpec(spec);
       status.state = 'ok';
       status.source = source;
+      // Only demo mode reports a personality. Absent on the live path, where the
+      // spec's own `personality` string is the model's description instead.
+      status.personality = res.personality ?? null;
 
       noteThought({
         kind: 'character',
@@ -538,6 +582,19 @@ async function main() {
     const next = sim.newMaze(mazeSeed + 1);
     if (!next) return;
 
+    // Score the maze that just ended, *before* `simTime` rolls into the new one.
+    // Guarded on `finished` alone because that is the only thing that
+    // distinguishes a solved maze from one skipped with R — `generation` counts
+    // both, and counting a skip as a reward would make the dashboard lie to
+    // exactly the visitor who pressed R to see what happened.
+    if (finished) {
+      rewardsCollected += 1;
+      const elapsed = sim.simTime - mazeStartSimTime;
+      completionTimes.push(elapsed);
+      if (completionTimes.length > 50) completionTimes.shift();
+    }
+    mazeStartSimTime = sim.simTime;
+
     mazeSeed = next.seed;
     loggedReward = false;
     placeMarkers();
@@ -580,6 +637,23 @@ async function main() {
   let lastIntentKey = '';
   let loggedReward = false;
   let overrideSeen = false;
+
+  // --- demo dashboard statistics -----------------------------------------
+  //
+  // Rewards collected and average completion time were not tracked anywhere:
+  // `sim.generation` counts mazes advanced, which lumps a solved maze together
+  // with one skipped with R, and there is no history of how long any of them
+  // took. Both are accumulated here instead of in `physics.js`, because they are
+  // a *presentation* concern — the simulation is under no obligation to keep
+  // score — and putting them in the physics module would have meant teaching it
+  // about a dashboard.
+  //
+  // Completion time is measured in simulation time, not wall-clock. A demo
+  // visitor who switches tabs must not make the average worse, and the sim
+  // already has a stable clock for exactly this.
+  let rewardsCollected = 0;
+  let mazeStartSimTime = sim.simTime;
+  const completionTimes = [];
   // Set by the N key so the HUD can say "you stopped it" rather than leaving
   // "the model is not answering" as the only explanation for a wander.
   let brainQuieted = false;
@@ -716,6 +790,21 @@ async function main() {
       brainQuieted = false;
       return 'model';
     })();
+
+    // The demo dashboard. Real values, read from the same state the HUD uses, so the
+    // two can never disagree — a second source of truth would be a second thing to
+    // be wrong. Written every frame into fixed spans: no innerHTML in a render
+    // loop, and no allocation per frame.
+    setMetric('m-maze', sim.maze ? `${sim.maze.dims}x${sim.maze.dims} #${sim.generation + 1}` : 'open arena');
+    setMetric('m-char', s.name);
+    setMetric('m-personality', status.personality?.label ?? s.personality ?? '—');
+    setMetric('m-rewards', String(rewardsCollected));
+    setMetric('m-avg', completionTimes.length
+      ? `${(completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length).toFixed(1)}s`
+      : '—');
+    setMetric('m-intent', `${intent.action}${intent.target ? ` → ${intent.target}` : ''}`);
+    setMetric('m-simtime', `${sim.simTime.toFixed(1)}s`);
+    setMetric('m-fps', steps > 0 ? fps.toFixed(0) : '—');
 
     hud.textContent =
       `${s.name}\n` +

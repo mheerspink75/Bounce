@@ -1040,7 +1040,60 @@ Consequences worth remembering:
   Real acceleration only happens headed, on the WSLg display (`DISPLAY=:0`).
 - Dependency versions are pinned: `three@0.186.1`, `@dimforge/rapier3d-compat@0.21.0`.
 
+### Windows (native) environment
+
+The checkout also runs natively on Windows, which is where the code now lives.
+Everything above describing WSL2/Ubuntu is kept as history; this is the current
+setup.
+
+| Fact | Value |
+| --- | --- |
+| OS | Windows 11, native (no WSL, no Linux paths) |
+| GPU | **Intel Arc Pro B60** — Ollama reports `100% GPU` |
+| GPU also present | GTX 1080 Ti (Pascal, compute 6.1) — **not used**; it is not the active adapter here |
+| Node / Python | 24.18.1 / 3.14.6 |
+| Ollama | 0.40.2, portable install at `E:\lm_studio_projects\tools\ollama` |
+
+Ollama is a **portable install, not a Windows service**, so it must be started by
+hand after a reboot:
+
+```
+E:\lm_studio_projects\tools\start-ollama.cmd
+```
+
+It starts `ollama serve` on **port 11435** — the same port `.env` already used —
+so no config changes were needed. `OLLAMA_HOST=127.0.0.1:11435` is persisted in
+the user environment. Measured with `qwen3:4b`:
+
+| | |
+| --- | --- |
+| Processor | `100% GPU`, ~80 tok/s on a 600-token generation |
+| Intent latency, warm | **~0.8–0.9s** (`lastLatencyMs` 916) |
+| First call after install | ~2.6s cold; a long cold start can be much worse while the weights load |
+
+Verify end to end (proxy + static server + real model driving the ball):
+
+```
+npm run serve
+node --env-file=.env scripts/live-ollama-check.mjs
+```
+
+The first command must be running in a separate shell — the check drives a real
+browser against the static server on `:8080` and prints the intents, distance
+travelled and page errors. `scripts/live-browser-check.mjs` is the same idea
+against the hosted NIM provider.
+
+Two things break on Windows that do not break on WSL, both now fixed in the
+repo — see `scripts/serve.py` (the registry maps `.js` to `text/plain`, so the
+browser rejects the ES modules) and `test/ollama-modes.test.mjs` (libuv aborts if
+the process exits with an HTTP handle still closing). `python` and `python3` on
+`PATH` are Microsoft Store stubs here; use the project venv at `.venv`, and
+`npm run serve` points at it.
+
 ### Running a local model
+
+> WSL-era setup, kept for reference. On this Windows checkout use the portable
+> install described in [Windows (native) environment](#windows-native-environment).
 
 The whole thing runs offline on the GPU. `ollama` is at `~/opt/ollama`, started
 by `~/opt/ollama/serve-gpu.sh`, and `.env` points at it:

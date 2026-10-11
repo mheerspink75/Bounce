@@ -19,10 +19,14 @@
     "test:loop": "node scripts/loop-check.mjs 2",
     "test:demo": "node scripts/demo-mode-check.mjs",
     "check:ollama": "node --env-file-if-exists=.env scripts/live-ollama-check.mjs",
+    "check:links": "node scripts/check-links.mjs",
+    "check:mermaid": "node scripts/check-mermaid.mjs",
     "bench:local": "node --env-file-if-exists=.env scripts/bench-local.mjs"
   },
   "devDependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",
+    "jsdom": "^28.0.0",
+    "mermaid": "^11.17.0",
     "playwright": "^1.63.0",
     "three": "^0.186.1"
   }

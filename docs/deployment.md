@@ -29,7 +29,8 @@ long-running Node process and a key, which rules out every free static host.
 That leaves two genuinely different products:
 
 - **A hosted demo anyone can click** — no key, no backend, deterministic
-  navigation. `?demo=1` exists for exactly this.
+  navigation. Demo mode exists for exactly this, and engages automatically on
+  GitHub Pages.
 - **A real-model instance** — needs a host that runs Node *and* a provider key.
 
 ---
@@ -57,34 +58,57 @@ configuration on the host. The `-compat` build avoids the problem entirely.
 
 ### Setup
 
-1. **Settings → Pages → Source: Deploy from a branch**, branch `main`, folder
-   `/ (root)`. The workflow picks it up automatically:
+1. **Settings → Pages → Source: GitHub Actions.** One click; the workflow
+   publishes `bounce/public` on every push to `main` that touches it:
 
    ```yaml
-   - uses: actions/upload-pages-artifact@v3
+   - uses: actions/upload-pages-artifact@v5
      with:
        path: bounce/public
    ```
 
-2. The published URL is the repo's Pages URL. Add `?demo=1`:
+2. The published URL is the repo's Pages URL, and **it needs no query string**:
 
    ```
-   https://mheerspink75.github.io/Bounce/bounce/public/?demo=1
+   https://mheerspink75.github.io/Bounce
    ```
 
-3. **Add `demo=1` to any link you share.** Demo mode is opt-in on purpose — it
-   never engages automatically when the proxy is unreachable, because "the proxy
-   is down" and "the model is scripted" must stay distinguishable.
+3. Demo mode **engages automatically on a `*.github.io` host.** This is the one
+   place that rule is relaxed, and only because the alternative is a broken demo:
+   a static host has no proxy to reach, so the page would otherwise sit there
+   reporting `proxy unreachable` to a visitor who never asked for a model.
+
+   Everywhere else it stays opt-in. On localhost the proxy is either running or
+   it is not, and silently substituting a scripted character would make those two
+   look identical — which is the one thing this project's HUD exists to prevent.
+   `?demo=0` forces it off even on Pages, for anyone pointing the deployed site at
+   a real proxy.
+
+   Precedence: `?demo=1` → `?demo=0` → `*.github.io` → off.
 
 ### What a visitor sees
 
-A working simulation, a character that solves mazes, the HUD reading
-`provider demo`, and a `control` line that says `demo` rather than `model`. It is
-honest about itself, which is the point — the README's screenshots come from real
-model runs, and the demo should not pretend otherwise.
+A working simulation, a banner stating plainly that the provider is a **mock**,
+the five demo personalities, and a metrics dashboard with real values — maze,
+character, rewards collected, average completion time, current intent,
+simulation time, FPS. The HUD's `control` line keeps reporting the demo honestly.
 
-`npm run test:demo` asserts exactly this claim locally: a maze genuinely solved,
-not merely rendered, with no server running.
+The banner is the important part. A static page that quietly substituted a
+scripted character for a model would be the worst thing this project could ship,
+so demo mode announces itself, permanently, and records *why* it engaged.
+
+`npm run test:demo-ui` asserts this locally, and the same script runs against
+production:
+
+```bash
+DEMO_BASE=https://mheerspink75.github.io/Bounce DEMO_QUERY=none \
+  node scripts/demo-experience-check.mjs
+```
+
+`DEMO_QUERY=none` is a sentinel rather than an empty string because Windows
+PowerShell deletes a variable assigned `''`, so `?? '?demo=1'` would never see an
+empty value and would quietly test the flagged URL while claiming to test the
+bare one.
 
 ### Limitation
 

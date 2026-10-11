@@ -386,9 +386,10 @@ bounce/
     physics.js     world, maze or arena, fixed-timestep accumulator
     brain.js       the slow brain: intent -> velocity servo
     api.js         the only module that does network I/O
-    demo.js        opt-in in-page provider, for static hosting with no backend
-    main.js        scene, render loop, goal marker, HUD
-  test/            16 suites, 291 assertions (+ 142 browser)
+    demo.js        in-page provider for static hosting; auto-engages on Pages
+    personality.js the demo engine behind demo.js - pure, seeded, importable
+    main.js        scene, render loop, goal marker, HUD, metrics dashboard
+  test/            18 files, 315 assertions (+ 142 browser)
   scripts/         env-wiring, benchmarks, latency, live checks,
                    maze timing/diagnosis, substep budget, loop check,
                    demo-mode check, reseed check, goal-prompt check,

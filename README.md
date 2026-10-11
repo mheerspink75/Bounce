@@ -31,7 +31,7 @@ create and control autonomous agents navigating procedurally generated mazes.
 [![tests](https://github.com/mheerspink75/Bounce/actions/workflows/tests.yml/badge.svg)](https://github.com/mheerspink75/Bounce/actions/workflows/tests.yml)
 [![Pages](https://github.com/mheerspink75/Bounce/actions/workflows/pages.yml/badge.svg)](https://mheerspink75.github.io/Bounce)
 [![License: MIT](https://img.shields.io/badge/license-MIT-6f42c1)](LICENSE)
-[![433 assertions](https://img.shields.io/badge/tests-433%20passing-2ea043)](docs/testing.md)
+[![457 assertions](https://img.shields.io/badge/tests-457%20passing-2ea043)](docs/testing.md)
 [![no API key required](https://img.shields.io/badge/API%20key-not%20required-6f42c1)](docs/security-notes.md)
 
 A model invents the character — shape, mass, bounciness, colour, a one-line
@@ -97,7 +97,7 @@ Working end to end, verified against a real local model driving a real browser.
 
 | | |
 | --- | --- |
-| **Assertions passing** | **433** — 232 headless, 59 server, 142 browser |
+| **Assertions passing** | **457** — 256 headless, 59 server, 142 browser |
 | **Verified model** | `qwen3:4b` on Ollama, native Windows, 100% GPU |
 | **Mazes solved unaided** | **3/3** with no manual steering |
 | **Intent latency** | **0.68s** warm, inside the brain's 2s poll |

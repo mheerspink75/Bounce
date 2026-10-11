@@ -1,6 +1,6 @@
 # Testing
 
-433 assertions across three suites, plus diagnostic scripts for when a number
+457 assertions across three suites, plus diagnostic scripts for when a number
 looks wrong.
 
 - [Suites](#suites)
@@ -17,12 +17,13 @@ looks wrong.
 
 | Suite | Count | Needs |
 | --- | --- | --- |
-| `npm test` (headless) | **232** | Node only. No browser, no network, no key. |
+| `npm test` (headless) | **256** | Node only. No browser, no network, no key. |
 | — of which maze | 55 | generation, routing, reward loop |
 | — of which timestep | 16 | the simulation keeps real time at low fps |
+| — of which personality | 24 | the demo engine: determinism, variety, schema |
 | `npm test` (server) | **59** | proxy, providers, extraction, sanitising |
 | `npm run test:browser` | **142** | WebGL in a real browser; **both servers up** |
-| **Total** | **433** | |
+| **Total** | **457** | |
 
 `npm test` needs only Node and exits 0 or 1 — no skipping, no network, no API
 key. That matters because it is what runs in CI.
@@ -36,12 +37,14 @@ reason [tests that lie](gotchas.md#tests-that-lie) is its own section.
 ## Running them
 
 ```bash
-npm test               # 232 headless + 59 server. No browser, no network, no key.
+npm test               # 256 headless + 59 server. No browser, no network, no key.
 npm run test:maze      # 55 of those: maze generation, routing, and the reward loop
 npm run test:timestep  # 16 of those: the simulation keeps real time at low fps
+npm run test:personality # 24 of those: the demo engine is deterministic and varied
 npm run test:browser   # 142 browser + WebGL assertions (needs both servers up)
 npm run test:loop      # drives 2 full mazes unaided in the real page (needs both)
 npm run test:demo      # static-only: solves a maze with no backend and no model
+npm run test:demo-ui   # banner, dashboard and personality rotation in a browser
 npm run check:links    # every relative link + anchor in README.md and docs/ resolves
 npm run check:mermaid  # all five Mermaid diagrams parse, via Mermaid's own parser
 ```
@@ -100,6 +103,43 @@ budget, with zero page errors. Writing `docs/demo-mode.png` is a side effect.
 
 It is deliberately not a render check. "The page loaded" is not the claim; "the
 thing works with no backend" is.
+
+### Personality engine
+
+`npm run test:personality` covers `public/personality.js` — the engine behind
+demo mode. It has to live in its own module, not in `demo.js`, because `demo.js`
+reads `location.search` at import time and therefore cannot be imported into Node
+at all. Keeping it pure is what makes it testable.
+
+Covered: same seed → same sequence (determinism, which is the whole basis for
+the demo being reproducible); the seed-0 stream does not collapse; every generated
+character has the shape `brain.js` expects; all five personalities emit; all
+three goal/spec sets are internally consistent; and Efficient demonstrably
+prefers finishing over exploring where Curious does not.
+
+The last one is the assertion worth having. Without it, the weights could all be
+set to zero and every test would still pass.
+
+### Demo experience
+
+`npm run test:demo-ui` checks the presentation layer in a real browser: the
+banner is visible and states the provider is a mock, all five personalities
+appear over a run, the metrics dashboard shows real values (including a genuine
+average completion time after a reward), and the page makes **no request off its
+origin** beyond the pinned CDN. That last check is what stops demo mode quietly
+becoming a thing that phones home.
+
+```bash
+DEMO_BASE=https://mheerspink75.github.io/Bounce DEMO_QUERY=none \
+  node scripts/demo-experience-check.mjs
+```
+
+Pointed at production, it additionally asserts that demo mode auto-engaged and
+that the banner gives *static hosting (github.io)* as its reason. `DEMO_QUERY`
+takes the literal string `none` to mean "no query string" — an empty variable
+cannot say that, because Windows PowerShell deletes a variable assigned `''`, and
+the `?? '?demo=1'` default would then quietly test the wrong URL while the output
+claimed otherwise.
 
 ---
 

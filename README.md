@@ -1,9 +1,36 @@
-# Character Design
+# Bounce
 
-**A 3D character that a language model designs and steers, navigating a
-procedurally generated maze in a web browser.**
+## 🚀 Live Demo
+
+**[Launch the live demo →](https://mheerspink75.github.io/Bounce)**
+
+No install, no API key, no GPU, no backend. It runs entirely in your browser
+against a built-in mock provider, so the simulation is the thing you can actually
+try. The [full version](docs/deployment.md) connects a real model.
+
+Bounce is an AI-controlled physics simulation where local or cloud-hosted LLMs
+create and control autonomous agents navigating procedurally generated mazes.
+
+**Key features**
+
+- **AI-driven character design** — the model invents name, radius, colour, mass,
+  bounciness and a one-line personality.
+- **LLM steering architecture** — the model emits *intent*, never motion. A
+  velocity servo converts intent into forces; the physics engine owns all
+  movement.
+- **Physics simulation** — Rapier, at a fixed timestep, substepped so the
+  simulation keeps real time even when the frame rate does not.
+- **Maze navigation** — seeded procedural mazes with deterministic BFS routing.
+  The model chooses the goal; the code chooses the route.
+- **Local model support** — Ollama and any OpenAI-compatible endpoint, verified
+  against `qwen3` on this machine.
+- **Schema-constrained outputs** — two-stage sanitising, proxy then client, so a
+  model response is trusted no more than the model is.
+- **GitHub Pages demo** — the same code, a different provider, deployed static.
 
 [![tests](https://github.com/mheerspink75/Bounce/actions/workflows/tests.yml/badge.svg)](https://github.com/mheerspink75/Bounce/actions/workflows/tests.yml)
+[![Pages](https://github.com/mheerspink75/Bounce/actions/workflows/pages.yml/badge.svg)](https://mheerspink75.github.io/Bounce)
+[![License: MIT](https://img.shields.io/badge/license-MIT-6f42c1)](LICENSE)
 [![433 assertions](https://img.shields.io/badge/tests-433%20passing-2ea043)](docs/testing.md)
 [![no API key required](https://img.shields.io/badge/API%20key-not%20required-6f42c1)](docs/security-notes.md)
 
@@ -487,6 +514,10 @@ thing debuggable — and the maze is the proof: all the hard problems were in
 deterministic code, and none of them needed the model.
 
 **Measure before you fix, and log before you guess.**
+
+## Licence
+
+MIT — see [LICENSE](LICENSE).
 
 Built with [three.js](https://threejs.org/) and
 [Rapier](https://rapier.rs/) (both devDependencies — there are no runtime
